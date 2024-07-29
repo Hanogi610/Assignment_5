@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:maxHeight="150dp">
+    <ImageView
+        android:id="@+id/notification_cover"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:maxHeight="100dp"
+        android:scaleType="centerCrop" />
+
+    <ImageView
+        android:id="@+id/notification_icon"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_alignParentStart="true"
+        android:layout_centerVertical="true"
+        android:contentDescription="@string/music_icon"
+        android:scaleType="centerCrop"
+        android:src="@drawable/ic_music_note_24" />
+
+    <TextView
+        android:id="@+id/notification_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toEndOf="@id/notification_icon"
+        android:layout_centerVertical="true"
+        android:layout_marginStart="8dp"
+        android:text="Song Title"
+        android:textSize="16sp"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+    <ImageButton
+        android:id="@+id/notification_prev"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_toEndOf="@id/notification_title"
+        android:layout_centerVertical="true"
+        android:layout_marginStart="8dp"
+        android:background="@null"
+        android:src="@drawable/ic_skip_previous_24"
+        android:contentDescription="@string/previous_song" />
+
+    <ImageButton
+        android:id="@+id/notification_play_pause"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_toEndOf="@id/notification_prev"
+        android:layout_centerVertical="true"
+        android:layout_marginStart="8dp"
+        android:background="@null"
+        android:src="@drawable/ic_play_circle_24"
+        android:contentDescription="@string/play_controller" />
+
+    <ImageButton
+        android:id="@+id/notification_next"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_toEndOf="@id/notification_play_pause"
+        android:layout_centerVertical="true"
+        android:layout_marginStart="8dp"
+        android:background="@null"
+        android:src="@drawable/ic_skip_next_24"
+        android:contentDescription="@string/next_song" />
+</RelativeLayout>
