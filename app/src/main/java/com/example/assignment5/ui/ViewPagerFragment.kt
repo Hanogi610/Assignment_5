@@ -44,20 +44,15 @@ class ViewPagerFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             launch {
-                mainViewModel.songQueue.collect { songQueue ->
-                    if (songQueue.isNotEmpty()) {
+                mainViewModel.playbackState.collect { it ->
+                    if (it.songQueue.isNotEmpty()) {
                         binding.currentSongView.visibility = View.VISIBLE
-                        val currentSong = songQueue.getOrNull(mainViewModel.currentSongIndex.value)
+                        val currentSong = it.songQueue.getOrNull(it.currentSongIndex)
                         binding.songName.text = currentSong?.name ?: "Unknown Song"
                     } else {
                         binding.currentSongView.visibility = View.GONE
                     }
-                }
-            }
-
-            launch {
-                mainViewModel.isPlaying.collect { isPlaying ->
-                    val controllerIcon = if (isPlaying) {
+                    val controllerIcon = if (it.isPlaying) {
                         R.drawable.ic_pause_circle_24
                     } else {
                         R.drawable.ic_play_circle_24
@@ -68,7 +63,7 @@ class ViewPagerFragment : Fragment() {
         }
 
         binding.controllerButton.setOnClickListener {
-            mainViewModel.setPlaying(!mainViewModel.isPlaying.value)
+            mainViewModel.setPlaying(!mainViewModel.playbackState.value.isPlaying)
         }
 
         binding.currentSongView.setOnClickListener {

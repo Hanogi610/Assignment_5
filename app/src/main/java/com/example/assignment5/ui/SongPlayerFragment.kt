@@ -37,8 +37,8 @@ class SongPlayerFragment : Fragment() {
     private var _binding: FragmentSongPlayerBinding? = null
     private val binding get() = _binding!!
     private val adapter : BottomSheetRvAdapter by lazy {
-        BottomSheetRvAdapter(mainViewModel.songQueue.value, { song ->
-            mainViewModel.setCurrentSongIndex(mainViewModel.songQueue.value.indexOf(song))
+        BottomSheetRvAdapter(mainViewModel.playbackState.value.songQueue, { song ->
+            mainViewModel.setCurrentSongIndex(mainViewModel.playbackState.value.songQueue.indexOf(song))
             mainViewModel.setPlaying(true)
         }, { song ->
             mainViewModel.removeSongFromQueue(song)
@@ -55,21 +55,11 @@ class SongPlayerFragment : Fragment() {
         val view = binding.root
 
         lifecycleScope.launch {
-            mainViewModel.songQueue.collect { songQueue ->
-                updateUI(songQueue)
-            }
-        }
-
-        lifecycleScope.launch {
-            mainViewModel.currentSongIndex.collect { index ->
-                updateCurrentSong(index)
-            }
-        }
-
-        lifecycleScope.launch {
-            mainViewModel.isPlaying.collect { isPlaying ->
+            mainViewModel.playbackState.collect{
+                updateUI(it.songQueue)
+                updateCurrentSong(it.currentSongIndex)
                 binding.playPauseButton.setImageResource(
-                    if (isPlaying) R.drawable.ic_pause_circle_24 else R.drawable.ic_play_circle_24
+                    if (it.isPlaying) R.drawable.ic_pause_circle_24 else R.drawable.ic_play_circle_24
                 )
             }
         }
@@ -86,17 +76,15 @@ class SongPlayerFragment : Fragment() {
         }
 
         binding.playPauseButton.setOnClickListener {
-            mainViewModel.setPlaying(!mainViewModel.isPlaying.value)
+            mainViewModel.setPlaying(!mainViewModel.playbackState.value.isPlaying)
         }
 
         binding.nextButton.setOnClickListener {
             mainViewModel.setPlaying(true)
-            mainViewModel.setCurrentSongIndex((mainViewModel.currentSongIndex.value + 1) % (mainViewModel.songQueue.value.size))
         }
 
         binding.previousButton.setOnClickListener {
             mainViewModel.setPlaying(true)
-            mainViewModel.setCurrentSongIndex((mainViewModel.currentSongIndex.value - 1 + (mainViewModel.songQueue.value.size)) % (mainViewModel.songQueue.value.size))
         }
 
         binding.upNextTextView.setOnClickListener {
@@ -109,13 +97,13 @@ class SongPlayerFragment : Fragment() {
 
     private fun updateUI(songQueue: List<SongEntity>) {
         adapter.updateSongs(songQueue)
-        adapter.updateCurrentlyPlayingPosition(mainViewModel.currentSongIndex.value)
+        adapter.updateCurrentlyPlayingPosition(mainViewModel.playbackState.value.currentSongIndex)
         //binding.seekBar.max = playbackService?.getDuration()?.toInt() ?: 0
     }
 
     private fun updateCurrentSong(index: Int) {
         adapter.updateCurrentlyPlayingPosition(index)
-        val song = mainViewModel.songQueue.value.getOrNull(index)
+        val song = mainViewModel.playbackState.value.songQueue.getOrNull(index)
         binding.coverImageView.load(song?.albumCover) {
             transformations(DiskShapeTransformation())
             placeholder(R.drawable.ic_music_note_24)
@@ -123,7 +111,7 @@ class SongPlayerFragment : Fragment() {
         }
         binding.songTitleTextView.text = song?.name
         // binding.artistNameTextView.text = singer?.name
-        if (mainViewModel.isPlaying.value) {
+        if (mainViewModel.playbackState.value.isPlaying) {
             binding.coverImageView.startAnimation(rotationAnimation)
         } else {
             binding.coverImageView.clearAnimation()

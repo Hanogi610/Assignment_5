@@ -15,6 +15,13 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+data class PlaybackState(
+    val currentSongIndex: Int = 0,
+    val songQueue: List<SongEntity> = emptyList(),
+    val isPlaying: Boolean = false,
+    val progress: Int = 0
+)
+
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val mockData: MockData
@@ -28,24 +35,15 @@ class MainViewModel @Inject constructor(
     private val _selectedPlaylist = MutableStateFlow<Playlist?>(null)
     val selectedPlaylist: StateFlow<Playlist?> get() = _selectedPlaylist
 
-    private val _songQueue = MutableStateFlow<List<SongEntity>>(emptyList())
-    val songQueue: StateFlow<List<SongEntity>> get() = _songQueue
-
-    private val _currentSongIndex = MutableStateFlow(0)
-    val currentSongIndex: StateFlow<Int> get() = _currentSongIndex
-
-    private val _isPlaying = MutableStateFlow(false)
-    val isPlaying: StateFlow<Boolean> get() = _isPlaying
-
-    private val _progress = MutableStateFlow(0)
-    val progress: StateFlow<Int> get() = _progress
+    private val _playbackState = MutableStateFlow(PlaybackState())
+    val playbackState: StateFlow<PlaybackState> get() = _playbackState
 
     fun setPlaybackService(service: PlaybackService?) {
         _playbackService.value = service
-        if (service != null) {
+        if(service!=null){
             viewModelScope.launch {
-                service.currentIndexFlow.collect {
-                    _currentSongIndex.value = it
+                service.currentIndexFlow.collect{
+                    _playbackState.value = _playbackState.value.copy(currentSongIndex = it)
                 }
             }
         }
@@ -60,35 +58,38 @@ class MainViewModel @Inject constructor(
     }
 
     fun setSongQueue(songs: List<SongEntity>) {
-        _songQueue.value = songs
+        _playbackState.value = _playbackState.value.copy(songQueue = songs.toMutableList())
     }
 
     fun addSongToQueue(song: SongEntity) {
-        _songQueue.value = _songQueue.value.toMutableList().apply {
-            if (!contains(song)) add(song)
+        if(_playbackState.value.songQueue.isEmpty()) {
+            _playbackState.value = _playbackState.value.copy(songQueue = listOf(song))
+        } else {
+            if(!_playbackState.value.songQueue.contains(song)) {
+                _playbackState.value = _playbackState.value.copy(songQueue = _playbackState.value.songQueue + song)
+            }
         }
     }
 
     fun removeSongFromQueue(song: SongEntity) {
-        _songQueue.value = _songQueue.value.toMutableList().apply {
-            remove(song)
+        if(_playbackState.value.songQueue.isNotEmpty()) {
+            _playbackState.value = _playbackState.value.copy(songQueue = _playbackState.value.songQueue - song)
         }
     }
 
     fun setCurrentSongIndex(index: Int) {
-        _currentSongIndex.value = index
+        _playbackState.value = _playbackState.value.copy(currentSongIndex = index)
     }
 
     fun setPlaying(isPlaying: Boolean) {
-        _isPlaying.value = isPlaying
+        _playbackState.value = _playbackState.value.copy(isPlaying = isPlaying)
     }
 
     fun setProgress(progress: Int) {
-        _progress.value = progress
+        _playbackState.value = _playbackState.value.copy(progress = progress)
     }
 
     suspend fun insertMockData() {
         mockData()
     }
 }
-

@@ -90,6 +90,7 @@ class PlaybackService : Service() {
             stopForeground(STOP_FOREGROUND_REMOVE)
         }
 
+        Log.d(TAG, "onStartCommand: $action")
         return START_NOT_STICKY
     }
 
@@ -253,6 +254,7 @@ class PlaybackService : Service() {
                     if (currentIndex < playlist.size - 1) {
                         currentIndex++
                         playSong()
+                        sendUpdateToActivity(ACTION_SKIP_TO_NEXT)
                     } else {
                         stopSelf()
                     }

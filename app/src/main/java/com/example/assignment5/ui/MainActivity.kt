@@ -20,7 +20,6 @@ import com.example.assignment5.R
 import com.example.assignment5.core.service.PlaybackService
 import com.example.assignment5.core.util.AppStart
 import com.example.assignment5.core.util.checkAppStart
-import com.example.assignment5.data.entity.SongEntity
 import com.example.assignment5.data.entity.toEntity
 import com.example.assignment5.data.entity.toNormal
 import com.example.assignment5.data.model.Song
@@ -33,6 +32,7 @@ class MainActivity : AppCompatActivity() {
     private val binding: ActivityMainBinding by lazy {
         ActivityMainBinding.inflate(layoutInflater)
     }
+    private var previousPlaybackState: PlaybackState? = null
     private val viewModel: MainViewModel by viewModels()
     private val broadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -40,8 +40,6 @@ class MainActivity : AppCompatActivity() {
             val isPlaying = intent?.getBooleanExtra("isPlaying", false)
             val currentSongIndex = intent?.getIntExtra("currentIndex", 0)
             val action = intent?.getIntExtra("action", PlaybackService.ACTION_PLAY)
-            Log.d(TAG, "onReceive: $action, currentIndex=$currentSongIndex, isPlaying=$isPlaying, playlistSize=${songQueue?.size}")
-
             when (action) {
                 PlaybackService.ACTION_PAUSE -> {
                     viewModel.setPlaying(false)
@@ -49,8 +47,11 @@ class MainActivity : AppCompatActivity() {
                 PlaybackService.ACTION_RESUME -> {
                     viewModel.setPlaying(true)
                 }
-                PlaybackService.ACTION_SKIP_TO_PREVIOUS, PlaybackService.ACTION_SKIP_TO_NEXT -> {
-                    viewModel.setCurrentSongIndex(currentSongIndex ?: 0)
+                PlaybackService.ACTION_SKIP_TO_PREVIOUS -> {
+                    viewModel.setCurrentSongIndex(currentSongIndex!!)
+                }
+                PlaybackService.ACTION_SKIP_TO_NEXT -> {
+                    viewModel.setCurrentSongIndex(currentSongIndex!!)
                 }
                 PlaybackService.ACTION_STOP -> {
                     viewModel.setPlaying(false)
@@ -100,71 +101,39 @@ class MainActivity : AppCompatActivity() {
         val navController = navHostFragment?.findNavController()
 
         lifecycleScope.launch {
-            viewModel.songQueue.collect { songQueue ->
-                handleSongQueueChange(songQueue)
-            }
-        }
-        lifecycleScope.launch {
-            viewModel.currentSongIndex.collect { index ->
-                handleCurrentSongIndexChange(index)
-            }
-        }
-        lifecycleScope.launch {
-            viewModel.isPlaying.collect { isPlaying ->
-                handlePlayingStateChange(isPlaying)
-            }
-        }
-        lifecycleScope.launch {
-            viewModel.progress.collect { progress ->
-                handleProgressChange(progress)
-            }
-        }
-    }
+            viewModel.playbackState.collect { currentState ->
+                val playlistChanged = previousPlaybackState?.songQueue != currentState.songQueue
+                val songIndexChanged = previousPlaybackState?.currentSongIndex != currentState.currentSongIndex
+                val isPlayingChanged = previousPlaybackState?.isPlaying != currentState.isPlaying
 
-    private fun handleSongQueueChange(songQueue: List<SongEntity>) {
-        if (songQueue.isEmpty()) {
-            playbackService?.handleActionMusic(PlaybackService.ACTION_STOP)
-        } else if (viewModel.isPlaying.value) {
-            val intent = Intent(this, PlaybackService::class.java).apply {
-                putParcelableArrayListExtra(
-                    "playlist", ArrayList(songQueue.map { it.toNormal() })
-                )
-                putExtra("currentIndex", viewModel.currentSongIndex.value)
-                putExtra("isPlaying", true)
+                if (playlistChanged || songIndexChanged || isPlayingChanged) {
+                    if (currentState.isPlaying && currentState.songQueue.isNotEmpty()) {
+                        val intent = Intent(this@MainActivity, PlaybackService::class.java)
+                        val bundle = Bundle().apply {
+                            putParcelableArrayList(
+                                "playlist", ArrayList(currentState.songQueue.map { song -> song.toNormal() })
+                            )
+                        }
+                        intent.putExtras(bundle)
+                        intent.putExtra("currentIndex", currentState.currentSongIndex)
+                        intent.putExtra("isPlaying", true)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            startForegroundService(intent)
+                        } else {
+                            startService(intent)
+                        }
+                    }
+                    if (!currentState.isPlaying) {
+                        playbackService?.handleActionMusic(PlaybackService.ACTION_PAUSE)
+                    }
+                    if (currentState.songQueue.isEmpty()) {
+                        playbackService?.handleActionMusic(PlaybackService.ACTION_STOP)
+                    }
+                    // Update the previous state
+                    previousPlaybackState = currentState
+                }
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(intent)
-            } else {
-                startService(intent)
-            }
         }
-    }
-
-    private fun handleCurrentSongIndexChange(index: Int) {
-        val intent = Intent(this, PlaybackService::class.java).apply {
-            putParcelableArrayListExtra(
-                "playlist", ArrayList(viewModel.songQueue.value.map { it.toNormal() })
-            )
-            putExtra("currentIndex", index)
-            putExtra("isPlaying", true)
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent)
-        } else {
-            startService(intent)
-        }
-    }
-
-    private fun handlePlayingStateChange(isPlaying: Boolean) {
-        if (isPlaying) {
-            playbackService?.handleActionMusic(PlaybackService.ACTION_RESUME)
-        } else {
-            playbackService?.handleActionMusic(PlaybackService.ACTION_PAUSE)
-        }
-    }
-
-    private fun handleProgressChange(progress: Int) {
-        // Handle progress changes if needed
     }
 
     private fun handleServiceConnection() {
@@ -178,6 +147,7 @@ class MainActivity : AppCompatActivity() {
             viewModel.setPlaying(isPlaying ?: true)
             viewModel.setSongQueue(songQueue?.map { it.toEntity(0) } ?: emptyList())
             viewModel.setCurrentSongIndex(currentSongIndex ?: 0)
+            Log.d(TAG, "on opening main activity: ${viewModel.playbackState.value}")
 
             // Navigate to SongPlayerFragment if needed
             findNavController(R.id.nav_host_fragment).navigate(R.id.songPlayerFragment)
@@ -229,4 +199,3 @@ class MainActivity : AppCompatActivity() {
         LocalBroadcastManager.getInstance(this).unregisterReceiver(broadcastReceiver)
     }
 }
-

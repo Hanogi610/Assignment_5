@@ -64,10 +64,7 @@ class SongViewFragment : Fragment() {
         val view = binding.root
 
         adapter = SongRvAdapter(emptyList(), {
-            clearPlayState()
-            Log.d(TAG, "on song click: ${songs.indexOf(it)} $songs")
             mainViewModel.setSongQueue(songs)
-            Log.d(TAG, "setCurrentSongIndex: $${songs.indexOf(it)}")
             mainViewModel.setCurrentSongIndex(songs.indexOf(it))
             mainViewModel.setPlaying(true)
             findNavController().navigate(R.id.action_viewPagerFragment_to_songPlayerFragment)
@@ -151,12 +148,6 @@ class SongViewFragment : Fragment() {
     override fun onDestroy() {
         super.onDestroy()
         _binding = null
-    }
-
-    fun clearPlayState(){
-        mainViewModel.setPlaying(false)
-        mainViewModel.setSongQueue(emptyList())
-        mainViewModel.setCurrentSongIndex(0)
     }
 
 
